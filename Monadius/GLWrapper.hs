@@ -16,9 +16,18 @@ import Unsafe.Coerce
 r2f :: Double -> GLdouble
 r2f = unsafeCoerce -- fromRational . toRational
 
+-- vertex :: f Double -> IO ()
 vertex v = G.vertex (fmap r2f v)
+
+translate :: Vector3 Double -> IO ()
 translate v = G.translate (fmap r2f v)
+
+rotate :: Double -> Vector3 Double -> IO ()
 rotate r v = G.rotate (r2f r) (fmap r2f v)
+
+scale :: Double -> Double -> Double -> IO ()
 scale a b c = G.scale (r2f a) (r2f b) (r2f c)
+
+-- color :: f Double -> IO ()
 color v = G.color (fmap r2f v)
 
