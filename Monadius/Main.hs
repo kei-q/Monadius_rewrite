@@ -29,20 +29,9 @@ import Util (intToDouble, padding, putDebugStrLn)
 
 import GLWrapper
 
+import GlobalVariables
+
 lookAt v1 v2 v3 = GLU.lookAt (fmap r2f v1) (fmap r2f v2) (fmap r2f v3)
-
-data GlobalVariables = GlobalVariables{
-  saveState :: (Int,Int) ,isCheat :: Bool, demoIndex :: Int,
-  -- | 'recorderMode' means general gamemode that user wants,
-  -- 'mode' of a recorder means current gamemode.
-  -- two are different when temporal demo replays.
-  recorderMode :: RecorderMode,
-  playbackKeys :: [[Key]],playbackSaveState :: (Int,Int),playBackName :: Maybe String,
-  recordSaveState :: (Int,Int),saveHiScore :: Int
-  }
-
-replayFileExtension :: String
-replayFileExtension = ".replay"
 
 presentationMode :: Bool
 presentationMode = True
@@ -128,10 +117,6 @@ dispProc cp = do
   m <- readIORef cp
   Scene next <- m
   writeIORef cp next
-
--- | Scene is something that does some IO,
--- then returns the Scene that are to be executed in next frame.
-newtype Scene = Scene (IO Scene)
 
 openingProc :: Int -> Int -> GlobalVariables -> IORef [Key] -> IO Scene
 openingProc clock menuCursor vars ks = do
@@ -365,7 +350,5 @@ keyProc keystate key ks _ _ =
     (_,Down) -> modifyIORef keystate (nub . (++ [key]))
     (_,Up) -> modifyIORef keystate (filter (/=key))
 
-savePoints :: [Int]
-savePoints = [0,1280,3000,6080]
 
 
