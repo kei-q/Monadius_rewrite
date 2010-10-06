@@ -5,39 +5,29 @@ module EndingProc
 
 import Control.Monad (zipWithM_)
 
-import Data.IORef
-
 import GLWrapper
 
-data EndState
-   = Ending (IORef Double)
-   | Opening Int Int
+data EndState = Ending Double | Opening
 
-initGraphics :: IO ()
-initGraphics = do
-  clear [ColorBuffer,DepthBuffer]
-  matrixMode $= Modelview 0
-  loadIdentity
+cWhite :: IO ()
+cWhite = color $ Color3 1.0 1.0 1.0
 
-endingProc :: Int -> [Key] -> IORef Double -> IO EndState
-endingProc stage keystate ctr= do
-  counter <- readIORef ctr
-  modifyIORef ctr (min 2420 . (+2.0))
-
+endingProc :: Int -> [Key] -> Double -> IO EndState
+endingProc stage keystate counter = do
   initGraphics
 
-  color $ Color3 (1.0 :: Double) 1.0 1.0
+  cWhite
   zipWithM_ (\str pos -> preservingMatrix $ do
-    translate $ Vector3 (-180 :: Double) (-240+counter-pos) 0
-    scale (0.3 :: Double) 0.3 0.3
+    translate $ Vector3 (-180) (-240+counter-pos) 0
+    scale 0.3 0.3 0.3
     renderString Roman str)
     (stuffRoll stage) [0,60..]
 
   swapBuffers
 
-  if Char ' ' `elem` keystate
-     then return $ Opening 0 1
-     else return $ Ending ctr
+  return $ if Char ' ' `elem` keystate
+     then Opening
+     else Ending $ 2420 `min` counter + 2
 
 stuffRoll :: Int -> [String]
 stuffRoll stage = [

@@ -35,32 +35,31 @@ lookAt :: Vertex3 Double -> Vertex3 Double -> Vector3 Double -> IO ()
 lookAt v1 v2 v3 = GLU.lookAt (fmap r2f v1) (fmap r2f v2) (fmap r2f v3)
 
 
-
-endingProc :: GlobalVariables -> IORef [Key] -> IORef Double -> IO Scene
-endingProc vars ks ctr = do
+endingProc :: GlobalVariables -> IORef [Key] -> Double -> IO Scene
+endingProc vars ks counter = do
    keystate <- readIORef ks
    let stage = (fst . saveState) vars
-   s <- EP.endingProc stage keystate ctr
-   case s of
-     (EP.Ending ctr') -> return $ Scene $ endingProc vars ks ctr'
-     (EP.Opening clock menuCursor ) -> return $ Scene $ openingProc clock menuCursor vars ks
+   s <- EP.endingProc stage keystate counter
+   return $ Scene $ case s of
+     (EP.Ending counter') -> endingProc vars ks counter'
+     (EP.Opening)         -> openingProc vars ks 0 1
 
-openingProc :: Int -> Int -> GlobalVariables -> IORef [Key] -> IO Scene
-openingProc clock menuCursor vars ks = do
+openingProc :: GlobalVariables -> IORef [Key] -> Int -> Int -> IO Scene
+openingProc vars ks clock menuCursor = do
   keystate <- readIORef ks
   s <- OP.openingProc clock menuCursor vars keystate
-  case s of
-    (OP.Opening c' m' v') -> return $ Scene $ openingProc c' m' v' ks
-    (OP.Main vars' gs) -> return $ Scene $ mainProc vars' gs ks
+  return $ Scene $ case s of
+    (OP.Opening c' m' v') -> openingProc v' ks c' m'
+    (OP.Main vars' gs)    -> mainProc vars' gs ks
 
 mainProc :: GlobalVariables -> IORef Recorder -> IORef [Key] -> IO Scene
 mainProc vars gs ks = do
   keystate <- readIORef ks
   s <- MP.mainProc vars gs keystate
-  case s of
-    (MP.Opening c' m' v') -> return $ Scene $ openingProc c' m' v' ks
-    (MP.Ending v' c') -> return $ Scene $ endingProc v' ks c'
-    (MP.Main v' g') -> return $ Scene $ mainProc v' g' ks
+  return $ Scene $ case s of
+    (MP.Opening v') -> openingProc v' ks 0 1
+    (MP.Ending v')  -> endingProc v' ks 0.0
+    (MP.Main v' g') -> mainProc v' g' ks
 
 
 loadReplay :: String-> IO ReplayInfo
@@ -80,9 +79,9 @@ main = do
         return (Record,[],(1,0),Nothing)
 
   keystate <- newIORef []
-  cp <- newIORef (openingProc 0 0 GlobalVariables{saveState = (1,0) ,isCheat = False,
-                                                 recorderMode=recMode,playbackKeys=keys,playbackSaveState = rss,recordSaveState=(1,0),demoIndex=0,
-                                                 playBackName=repName,saveHiScore=0} keystate)
+  cp <- newIORef (openingProc GlobalVariables{saveState = (1,0) ,isCheat = False,
+                                              recorderMode=recMode,playbackKeys=keys,playbackSaveState = rss,recordSaveState=(1,0),demoIndex=0,
+                                              playBackName=repName,saveHiScore=0} keystate 0 0)
   initialWindowSize $= Size 640 480
   initialDisplayMode $= [RGBAMode,DoubleBuffered]
 

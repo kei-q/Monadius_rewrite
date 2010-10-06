@@ -6,6 +6,8 @@ module GLWrapper
   , scale
   , color
   , r2f
+
+  , initGraphics
   )where
 
 import Graphics.UI.GLUT hiding (position, vertex, translate, rotate, scale, color, lookAt)
@@ -31,3 +33,10 @@ scale a b c = G.scale (r2f a) (r2f b) (r2f c)
 -- color :: f Double -> IO ()
 color v = G.color (fmap r2f v)
 
+
+
+initGraphics :: IO ()
+initGraphics = do
+  clear [ColorBuffer,DepthBuffer]
+  matrixMode $= Modelview 0
+  loadIdentity
