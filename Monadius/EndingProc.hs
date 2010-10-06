@@ -12,8 +12,8 @@ data EndState = Ending Double | Opening
 cWhite :: IO ()
 cWhite = color $ Color3 1.0 1.0 1.0
 
-endingProc :: Int -> [Key] -> Double -> IO EndState
-endingProc stage keystate counter = do
+endingProc :: Int -> Double -> [Key] -> IO EndState
+endingProc stage counter keystate = do
   initGraphics
 
   cWhite

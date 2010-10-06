@@ -24,8 +24,10 @@ import GlobalVariables
 presentationMode :: Bool
 presentationMode = True
 
+type OpenVars = (Int,Int)
+
 data OpenState
-  = Opening Int Int GlobalVariables
+  = Opening OpenVars GlobalVariables
   | Main GlobalVariables (IORef Recorder)
 
 ------------------------------------------------------------
@@ -138,8 +140,8 @@ renderInstructions clock = do
 -- openingProc
 --
 
-openingProc :: Int -> Int -> GlobalVariables -> [Key] -> IO OpenState
-openingProc clock menuCursor vars keystate
+openingProc :: OpenVars -> GlobalVariables -> [Key] -> IO OpenState
+openingProc (clock,menuCursor) vars keystate
   | recorderMode vars == Playback = gameStart Playback vars (fst $ playbackSaveState vars) (snd $ playbackSaveState vars) (isCheat vars)
   | clock > demoStartTime = demoStart vars
   | otherwise = do
@@ -161,7 +163,7 @@ openingProc clock menuCursor vars keystate
         in gameStart (recorderMode vars) vars savedLevel savedArea (isCheat vars)
     else if isJust $ getNumberKey keystate
       then gameStart (recorderMode vars) vars (fromJust $ getNumberKey keystate) 0 True
-      else return $ Opening (clock+1) (nextCursor menuCursor keystate) vars
+      else return $ Opening (clock+1, nextCursor menuCursor keystate) vars
   where
     demoStartTime | presentationMode = 480
                   | otherwise = 1800

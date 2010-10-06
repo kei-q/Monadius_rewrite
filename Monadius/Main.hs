@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-}
 {- Copyright 2005 Hideyuki Tanaka & Takayuki Muranushi
   This program is distributed under the terms of the GNU General Public License.
 
@@ -29,38 +30,34 @@ import qualified OpeningProc as OP
 import qualified MainProc as MP
 
 
-
-
 lookAt :: Vertex3 Double -> Vertex3 Double -> Vector3 Double -> IO ()
 lookAt v1 v2 v3 = GLU.lookAt (fmap r2f v1) (fmap r2f v2) (fmap r2f v3)
 
 
-endingProc :: GlobalVariables -> IORef [Key] -> Double -> IO Scene
-endingProc vars ks counter = do
-   keystate <- readIORef ks
-   let stage = (fst . saveState) vars
-   s <- EP.endingProc stage keystate counter
-   return $ Scene $ case s of
-     (EP.Ending counter') -> endingProc vars ks counter'
-     (EP.Opening)         -> openingProc vars ks 0 1
+sceneProc :: forall a a1. IORef a -> (a -> IO a1) -> (a1 -> IO Scene) -> IO Scene
+sceneProc ks proc next = readIORef ks >>= proc >>= return . Scene . next
 
-openingProc :: GlobalVariables -> IORef [Key] -> Int -> Int -> IO Scene
-openingProc vars ks clock menuCursor = do
-  keystate <- readIORef ks
-  s <- OP.openingProc clock menuCursor vars keystate
-  return $ Scene $ case s of
-    (OP.Opening c' m' v') -> openingProc v' ks c' m'
-    (OP.Main vars' gs)    -> mainProc vars' gs ks
+endingProc :: GlobalVariables -> IORef [Key] -> Double -> IO Scene
+endingProc vars ks counter = sceneProc ks proc next
+  where
+    proc = EP.endingProc (fst $ saveState vars) counter
+    next (EP.Ending counter') = endingProc vars ks counter'
+    next EP.Opening           = openingProc vars ks (0,1)
+
+openingProc :: GlobalVariables -> IORef [Key] -> (Int,Int) -> IO Scene
+openingProc vars ks s = sceneProc ks proc next
+  where
+    proc = OP.openingProc s vars
+    next (OP.Opening s' v') = openingProc v' ks s'
+    next (OP.Main vars' gs) = mainProc vars' gs ks
 
 mainProc :: GlobalVariables -> IORef Recorder -> IORef [Key] -> IO Scene
-mainProc vars gs ks = do
-  keystate <- readIORef ks
-  s <- MP.mainProc vars gs keystate
-  return $ Scene $ case s of
-    (MP.Opening v') -> openingProc v' ks 0 1
-    (MP.Ending v')  -> endingProc v' ks 0.0
-    (MP.Main v' g') -> mainProc v' g' ks
-
+mainProc vars gs ks = sceneProc ks proc next
+  where
+    proc = MP.mainProc vars gs
+    next (MP.Opening v') = openingProc v' ks (0,1)
+    next (MP.Ending v')  = endingProc v' ks 0.0
+    next (MP.Main v' g') = mainProc v' g' ks
 
 loadReplay :: String-> IO ReplayInfo
 loadReplay filename = readFile filename >>= (return . read)
@@ -81,7 +78,7 @@ main = do
   keystate <- newIORef []
   cp <- newIORef (openingProc GlobalVariables{saveState = (1,0) ,isCheat = False,
                                               recorderMode=recMode,playbackKeys=keys,playbackSaveState = rss,recordSaveState=(1,0),demoIndex=0,
-                                              playBackName=repName,saveHiScore=0} keystate 0 0)
+                                              playBackName=repName,saveHiScore=0} keystate (0,0))
   initialWindowSize $= Size 640 480
   initialDisplayMode $= [RGBAMode,DoubleBuffered]
 
