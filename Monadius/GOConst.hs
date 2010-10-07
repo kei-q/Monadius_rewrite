@@ -2,6 +2,9 @@ module GOConst where
 
 import Util (infinite)
 
+powerUpLimits :: [Int]
+powerUpLimits = [5,1,1,1,4,1]
+
 -- Cuteness to add later
 -- konamiCommand = [upButton,upButton,downButton,downButton,leftButton,rightButton,leftButton,rightButton,missileButton,shotButton]
 

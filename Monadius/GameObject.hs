@@ -7,6 +7,18 @@ import GLWrapper (Color3)
 import Util
 import GOConst
 
+newtype Monadius = Monadius (GameVariables,[GameObject])
+
+getVariables :: Monadius -> GameVariables
+getVariables (Monadius (vs,_))=vs
+
+
+data GameVariables = GameVariables {
+  totalScore :: Int,hiScore :: Int ,flagGameover :: Bool,
+  nextTag :: Int, gameClock :: Int,baseGameLevel :: Int,playTitle :: Maybe String
+  } deriving Eq
+
+
 data GameObject = -- objects that are actually rendered and moved.
   VicViper{ -- player's fighter.
     tag :: Maybe Int,position :: Complex Double,hitDisp :: Shape,hp :: Int,
