@@ -53,16 +53,13 @@ data ScrollBehavior = Enclosed{doesScroll :: Bool} | NoRollOut{doesScroll :: Boo
 --
 ------------------------------
 initialMonadius :: GameVariables -> Monadius
-initialMonadius initVs = Monadius (initGameVariables,initGameObjects)
+initialMonadius initVs = Monadius (initVs,initGameObjects)
     where
-      initGameVariables = initVs
-      initGameObjects =
-          stars ++ [freshVicViper,freshPowerUpGauge]
+      initGameObjects = stars ++ [freshVicViper,freshPowerUpGauge]
       stars = take 26 $ map (\(t,i) -> Star{tag=Nothing,position = (fix 320 t:+fix 201 t),particleColor=colors!!i}) $ zip (map (\x -> square x + x + 41) [2346,19091..]) [1..]
       fix :: Int -> Int -> Double
       fix limit value = intToDouble $ (value `mod` (2*limit) - limit)
       colors = [Color3 1 1 1,Color3 1 1 0,Color3 1 0 0, Color3 0 1 1] ++ colors
-    --  ++ map (\x -> freshOption{optionTag = x}) [1..4]  -- full option inchiki
 
 {-
 Default settings of game objects and constants
@@ -610,12 +607,13 @@ updateMonadius realKeys (Monadius (variables,objects))
 
 -- things needed both for progress and rendering
 weaponTypes :: GameObject -> [WeaponType]
-weaponTypes viper@VicViper{} =
-  [if powerUpLevels viper!gaugeOfDouble>0 then DoubleShot else
-   if powerUpLevels viper!gaugeOfLaser>0 then Laser else
-   NormalShot] ++
-   if powerUpLevels viper!gaugeOfMissile>0 then [Missile] else []
-
+weaponTypes viper@VicViper{}
+  | check gaugeOfDouble = DoubleShot : missile
+  | check gaugeOfLaser  = Laser      : missile
+  | otherwise           = NormalShot : missile
+  where
+    check g = powerUpLevels viper!g>0
+    missile = if check gaugeOfMissile then [Missile] else []
 weaponTypes _ = []
 
 isMonadiusOver :: Monadius -> Bool
