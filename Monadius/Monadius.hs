@@ -156,10 +156,9 @@ updateMonadius realKeys (Monadius (variables,objects))
     hitDisp = if treasure!!gameLevel then Circular 0 0 else Circular (0:+0) vicViperSize,
     hp = if selfDestructButton `elem` keys then 0 else hp vic
   } where
-    vx = (if (rightButton `elem` keys) then 1    else 0) +
-         (if (leftButton  `elem` keys) then (-1) else 0)
-    vy = (if (upButton    `elem` keys) then 1    else 0) +
-         (if (downButton  `elem` keys) then (-1) else 0)
+    isKey k = if k `elem` keys then 1 else 0
+    vx = isKey rightButton + (-(isKey leftButton))
+    vy = isKey upButton + (-(isKey downButton))
     vmag = if vx*vx+vy*vy>1.1 then sqrt(0.5) else 1
     isMoving = any (\b ->  elem b keys) [rightButton,leftButton,upButton,downButton]
     doesPowerUp = (powerUpButton `elem` keys) && (powerUpPointer vic >=0) &&
