@@ -1,5 +1,5 @@
-module EndingProc
-   ( endingProc
+module Scene.Ending
+   ( scene
    , EndState(..)
    ) where
 
@@ -12,8 +12,8 @@ data EndState = Ending Double | Opening
 cWhite :: IO ()
 cWhite = color $ Color3 1.0 1.0 1.0
 
-endingProc :: Int -> Double -> [Key] -> IO EndState
-endingProc stage counter keystate = do
+scene :: Int -> Double -> [Key] -> IO EndState
+scene stage counter keystate = do
   initGraphics
 
   cWhite

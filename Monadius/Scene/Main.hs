@@ -1,5 +1,5 @@
-module MainProc
-  ( mainProc
+module Scene.Main
+  ( scene
   , MainState(..)
   ) where
 
@@ -25,8 +25,8 @@ data MainState
 
 when t action = if t then action else return ()
 
-mainProc :: GlobalVariables -> IORef Recorder -> [Key] -> IO MainState
-mainProc vars gs keystate = do
+scene :: GlobalVariables -> IORef Recorder -> [Key] -> IO MainState
+scene vars gs keystate = do
   modifyIORef gs (update keystate)
   gamestate <- readIORef gs
 

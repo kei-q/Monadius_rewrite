@@ -25,9 +25,9 @@ import Recorder
 import GLWrapper
 
 import GlobalVariables
-import qualified EndingProc as EP
-import qualified OpeningProc as OP
-import qualified MainProc as MP
+import qualified Scene.Ending as SE
+import qualified Scene.Opening as SO
+import qualified Scene.Main as SM
 
 
 lookAt :: Vertex3 Double -> Vertex3 Double -> Vector3 Double -> IO ()
@@ -40,24 +40,24 @@ sceneProc ks proc next = readIORef ks >>= proc >>= return . Scene . next
 endingProc :: GlobalVariables -> IORef [Key] -> Double -> IO Scene
 endingProc vars ks counter = sceneProc ks proc next
   where
-    proc = EP.endingProc (fst $ saveState vars) counter
-    next (EP.Ending counter') = endingProc vars ks counter'
-    next EP.Opening           = openingProc vars ks (0,1)
+    proc = SE.scene (fst $ saveState vars) counter
+    next (SE.Ending counter') = endingProc vars ks counter'
+    next SE.Opening           = openingProc vars ks (0,1)
 
 openingProc :: GlobalVariables -> IORef [Key] -> (Int,Int) -> IO Scene
 openingProc vars ks s = sceneProc ks proc next
   where
-    proc = OP.openingProc s vars
-    next (OP.Opening s' v') = openingProc v' ks s'
-    next (OP.Main vars' gs) = mainProc vars' gs ks
+    proc = SO.scene s vars
+    next (SO.Opening s' v') = openingProc v' ks s'
+    next (SO.Main vars' gs) = mainProc vars' gs ks
 
 mainProc :: GlobalVariables -> IORef Recorder -> IORef [Key] -> IO Scene
 mainProc vars gs ks = sceneProc ks proc next
   where
-    proc = MP.mainProc vars gs
-    next (MP.Opening v') = openingProc v' ks (0,1)
-    next (MP.Ending v')  = endingProc v' ks 0.0
-    next (MP.Main v' g') = mainProc v' g' ks
+    proc = SM.scene vars gs
+    next (SM.Opening v') = openingProc v' ks (0,1)
+    next (SM.Ending v')  = endingProc v' ks 0.0
+    next (SM.Main v' g') = mainProc v' g' ks
 
 loadReplay :: String-> IO ReplayInfo
 loadReplay filename = readFile filename >>= (return . read)

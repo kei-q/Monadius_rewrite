@@ -1,5 +1,5 @@
-module OpeningProc
-  ( openingProc
+module Scene.Opening
+  ( scene
   , OpenState(..)
   ) where
 
@@ -140,8 +140,8 @@ renderInstructions clock = do
 -- openingProc
 --
 
-openingProc :: OpenVars -> GlobalVariables -> [Key] -> IO OpenState
-openingProc (clock,menuCursor) vars keystate
+scene :: OpenVars -> GlobalVariables -> [Key] -> IO OpenState
+scene (clock,menuCursor) vars keystate
   | recorderMode vars == Playback = gameStart Playback vars (fst $ playbackSaveState vars) (snd $ playbackSaveState vars) (isCheat vars)
   | clock > demoStartTime = demoStart vars
   | otherwise = do
