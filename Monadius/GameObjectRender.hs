@@ -4,18 +4,24 @@ module GameObjectRender
 
 import Data.Complex
 import Util
-import Data.Maybe (fromJust, isNothing)
 import Data.Array ((!))
-import Data.List (find)
 
 import GLWrapper
 import GameObject
 import GOConst
 
+when b act = if b then act else return ()
+
 rotateX, rotateY, rotateZ :: Double -> IO ()
 rotateX rad = rotate rad (Vector3 1 0 0)
 rotateY rad = rotate rad (Vector3 0 1 0)
 rotateZ rad = rotate rad (Vector3 0 0 1)
+
+modifyColor f (Color3 r g b) = Color3 (f r) (f g) (f b)
+
+translate1D x = translate $ Vector3 x 0 0
+translate2D x y = translate $ Vector3 x y 0
+
 
 standardUgoInterval :: Int
 standardUgoInterval = 7
@@ -48,7 +54,8 @@ renderMonadius (Monadius (variables,objects)) = do
   renderScore (Vector3 (   0) 220 0) scoreStr2
   where
   scoreStr = "1P "  ++ ((padding '0' 8).show.totalScore) variables
-  scoreStr2 = if isNothing $ playTitle variables then "HI "++((padding '0' 8).show.hiScore) variables else (fromJust $ playTitle variables)
+  scoreStr2 | Just score <- playTitle variables = score
+            | otherwise = "HI "++((padding '0' 8).show.hiScore) variables
 
   gameclock = gameClock variables
 
@@ -56,47 +63,49 @@ renderMonadius (Monadius (variables,objects)) = do
   renderGameObject :: GameObject -> IO ()
   renderGameObject gauge@PowerUpGauge{} = preservingMatrix $ do
     let x:+y = position gauge
-    translate $ Vector3 x y 0
+    translate2D x y
     color $ Color3 1.0 1.0 1.0
     mapM_ (\(i,j) -> (if(i==activeGauge)then renderActive else renderNormal) j (isLimit i) i) $
-      zip [0..5] [0,90..450] where
+      zip [0..5] [0,90..] where
       w=80
       h=20
+      box = [(0,0),(w,0),(w,h),(0,h)]
+      cross = [(0,0),(w,h),(w,0),(0,h)]
       renderNormal x l i = preservingMatrix $ do
         color $ Color3 0.7 0.8 0.8
         preservingMatrix $ do
-          translate (Vector3 x 0 0)
-          renderPrimitive LineLoop $ ugoVertices2D 0 1 [(0,0),(w,0),(w,h),(0,h)]
-          if l then renderPrimitive Lines $ ugoVertices2D 0 1 [(0,0),(w,h),(w,0),(0,h)] else return()
+          translate1D x
+          renderPrimitive LineLoop $ ugoVertices2D 0 1 box
+          when l $ renderPrimitive Lines $ ugoVertices2D 0 1 cross
         preservingMatrix $ do
           ugoTranslate x 0 0 3
-          translate (Vector3 (w/2) 0 0)
+          translate1D (w/2)
           rotateZ (3 * sin(intToDouble gameclock/10))
-          translate (Vector3 (-w/2) 0 0)
+          translate1D (-w/2)
           renderPowerUpName i
 
       renderActive x l i = preservingMatrix $ do
-        color (Color3 1 1 0)
+        color $ Color3 1 1 0
         preservingMatrix $ do
-          translate (Vector3 x 0 0)
-          renderPrimitive LineLoop $ ugoVertices2DFreq 0 5 2 [(0,0),(w,0),(w,h),(0,h)]
-          if l then renderPrimitive Lines $ ugoVertices2DFreq 0 5 2 [(0,0),(w,h),(w,0),(0,h)] else return()
+          translate1D x
+          renderPrimitive LineLoop $ ugoVertices2DFreq 0 5 2 box
+          when l $ renderPrimitive Lines $ ugoVertices2DFreq 0 5 2 cross
         preservingMatrix $ do
           ugoTranslateFreq x 0 0 5 2
-          translate (Vector3 (w/2) 0 0)
+          translate1D (w/2)
           rotateZ (10 * sin(intToDouble gameclock/5))
           scale 1.2 1.2 0
-          translate (Vector3 (-w/2) 0 0)
+          translate1D (-w/2)
           renderPowerUpName i
       activeGauge = powerUpPointer vicViper
       isLimit i = powerUpLevels vicViper!i>=powerUpLimits!!i
       renderPowerUpName i = do
-        translate (Vector3 6 3.5 0)
+        translate2D 6 3.5
         scale 0.15 0.13 0.15
         renderString Roman $ ["SPEED","MISSILE","DOUBLE","LASER","OPTION","  ?"]!!i
 
   renderGameObject vic@VicViper{position = x:+y} = if hp vic<=0 then preservingMatrix $ do
-      translate $ Vector3 x y 0
+      translate2D x y
       scale pishaMagnitudeX pishaMagnitudeY 0
       renderWithShade (Color3 1.0 0 0) (Color3 1.0 0.6 0.4) $ do
         renderPrimitive LineLoop $ ugoVertices2DFreq 0 1 1
@@ -126,7 +135,7 @@ renderMonadius (Monadius (variables,objects)) = do
       pishaMagnitudeY = max 0 $ (5*) $ (\z -> z*(1-z)) $ (/15) $ intToDouble $ ageAfterDeath vic
 
   renderGameObject Option{position = x:+y} = preservingMatrix $ do
-    translate (Vector3 x y 0)
+    translate2D x y
     renderWithShade (Color3 0.8 0 0) (Color3 0.4 0 0) $
       renderPrimitive LineLoop $ ugoVertices2D 0 2
         [(5,9),(9,7),(13,3),(13,(-3)),(9,(-7)),(5,(-9)),
@@ -138,7 +147,7 @@ renderMonadius (Monadius (variables,objects)) = do
 
   renderGameObject StandardMissile{position=x:+y,velocity=v} = preservingMatrix $ do
     let dir = (phase v) :: Double
-    translate (Vector3 x y 0)
+    translate2D x y
     rotateZ (dir / pi * 180)
     color (Color3 1.0 0.9 0.5)
     renderPrimitive LineLoop $ ugoVertices2D 0 1 [(0,0),(-7,2),(-7,-2)]
@@ -147,7 +156,7 @@ renderMonadius (Monadius (variables,objects)) = do
   renderGameObject StandardRailgun{position=x:+y,velocity=v} =
     preservingMatrix $ do
       let (_,phse)=polar v
-      translate (Vector3 x y 0)
+      translate2D x y
       rotateZ (phse / pi * 180)
       color (Color3 1.0 0.9 0.5)
       renderPrimitive Lines $ ugoVertices2D 0 1 [(0,0),((-5),0),((-9),0),((-11),0)]
@@ -156,13 +165,13 @@ renderMonadius (Monadius (variables,objects)) = do
     if age laser < 1 then return ()
     else preservingMatrix $ do
       let (_,phs)=polar v
-      translate (Vector3 x y 0)
+      translate2D x y
       rotateZ (phs / pi * 180)
       color (Color3 0.7 0.9 1.0)
       renderPrimitive Lines $ ugoVertices2D 0 0 [(12,0),(-laserSpeed,0)]
 
   renderGameObject Shield{position=x:+y, size = r,angle = theta} = preservingMatrix $ do
-    translate (Vector3 x y 0)
+    translate2D x y
     rotateZ theta
     renderWithShade (Color3 0.375 0.75 0.9375) (Color3 0.86 0.86 0.86) $ do
       scale r r 0
@@ -174,24 +183,23 @@ renderMonadius (Monadius (variables,objects)) = do
 
   renderGameObject powerUpCapsule@PowerUpCapsule{} = preservingMatrix $ do
     let x:+y = position powerUpCapsule
-    translate (Vector3 x y 0)
+    translate2D x y
     renderWithShade (Color3 0.9 0.9 0.9) (Color3 0.4 0.4 0.4) $ do
-      futa >> neji >> toge
-      rotateX (180) >> toge
-      rotateY (180) >> futa >> neji >> toge
-      rotateX (180) >> toge
+      futa >> neji >> toge >> rotateX (180) >> toge
+      rotateY (180)
+      futa >> neji >> toge >> rotateX (180) >> toge
     renderWithShade (Color3 1.0 0.0 0.0) (Color3 0.3 0.3 0.0) $ do
       nakami
       where
-        futa = renderPrimitive LineStrip $ ugoVertices2D 0 1 [((-10),6),((-6),10),(6,10),(10,6)]
-        neji = (renderPrimitive LineStrip $ ugoVertices2D 0 1 [(12,4),(12,(-4))]) >>
-               (renderPrimitive LineStrip $ ugoVertices2D 0 1 [(16,2),(16,(-2))])
-        toge = renderPrimitive LineStrip $ ugoVertices2D 0 1 [(10,8),(16,14)]
+        r = renderPrimitive LineStrip . ugoVertices2D 0 1
+        futa = r [((-10),6),((-6),10),(6,10),(10,6)]
+        neji = r [(12,4),(12,(-4))] >> r [(16,2),(16,(-2))]
+        toge = r [(10,8),(16,14)]
         nakami = rotate 145 (Vector3 0.2 0.2 1) >> scale 9 6 1 >>
           (renderPrimitive LineStrip $ ugoVertices2D 0 0.2 $ map (\n ->  (cos$n*pi/8,sin$n*pi/8)) [1,15,3,13,5,11,7,9])
 
   renderGameObject DiamondBomb{position = (x:+y),age=clock} = preservingMatrix $ do
-    translate (Vector3 x y 0)
+    translate2D x y
     rotateZ (90*intToDouble(clock`mod`4))
     color (Color3 1 1 1)
     renderPrimitive LineLoop $ vertices2D 0 $ [a,b,c]
@@ -207,7 +215,7 @@ renderMonadius (Monadius (variables,objects)) = do
       --   \|/
       --    e
   renderGameObject TurnGear{position=x:+y,age=clock} = preservingMatrix $ do
-    translate (Vector3 x y 0)
+    translate2D x y
     color $ Color3 1.0 0.7 1.0
     rotateZ (5 * intToDouble clock)
     renderWing
@@ -220,15 +228,16 @@ renderMonadius (Monadius (variables,objects)) = do
         [(3,0), (3,2/3), (smallBacterianSize,1/3), (smallBacterianSize,0), (smallBacterianSize+3,-1/3)]
 
   renderGameObject Flyer{position=x:+y,age=_,velocity = v,hasItem=item}  = preservingMatrix $ do
-    translate (Vector3 x y 0)
+    translate $ Vector3 x y 0
     color (if item then Color3 1.0 0.2 0.2 else Color3 0.3 1.0 0.7)
     rotateZ (phase v / pi * 180)
-    renderPrimitive LineLoop $ ugoVertices2D 0 2 $ [(-2,0),(-6,4),(-10,0),(-6,-4)]
-    renderPrimitive LineLoop $ ugoVertices2D 0 2 $ [(2,4),(16,4),(4,16),(-10,16)]
-    renderPrimitive LineLoop $ ugoVertices2D 0 2 $ [(2,-4),(16,-4),(4,-16),(-10,-16)]
+    r [(-2,0),(-6,4),(-10,0),(-6,-4)]
+    r [(2,4),(16,4),(4,16),(-10,16)]
+    r [(2,-4),(16,-4),(4,-16),(-10,-16)]
+    where r = renderPrimitive LineLoop . ugoVertices2D 0 2
 
   renderGameObject Ducker{position = (x:+y),hitDisp=hd,hasItem=item,velocity = v,gVelocity = g,age = a} = preservingMatrix $ do
-    translate (Vector3 x y 0)
+    translate2D x y
     if signum (imagPart g) > 0 then scale 1 (-1) 1 else return ()
     if signum (realPart v) < 0 then scale (-1) 1 1 else return ()
     --after this, ducker is on the lower ground, looking right
@@ -243,7 +252,7 @@ renderMonadius (Monadius (variables,objects)) = do
       legLen = 16
 
   renderGameObject Jumper{position = (x:+y),hitDisp=hd,hasItem=item,gravity = g,velocity=v} = preservingMatrix $ do
-    translate (Vector3 x y 0)
+    translate2D x y
     color (if item then Color3 1.0 0.2 0.2 else Color3 0.3 1.0 0.7)
     renderShape (0:+0) hd
     if gsign >0 then rotateX 180 else return() -- after this you can assume that the object is not upside down
@@ -256,20 +265,19 @@ renderMonadius (Monadius (variables,objects)) = do
 
   renderGameObject Grashia{position = (x:+y),hitDisp=hd,hasItem=item,gunVector = nv,gravity = g,mode=m} = preservingMatrix $ do
     color (if item then Color3 1.0 0.2 0.2 else Color3 0.3 1.0 0.7)
-    translate (Vector3 x y 0)
+    translate2D x y
     renderShape (0:+0) hd
     renderPrimitive LineLoop $ ugoVertices2D 0 2 $ map (\r -> (nvx*r,nvy*r)) [16,32]
-    if m == 1 then do
+    when (m == 1) $ do
       renderShape 0 $ Circular (16:+12*gsign) 4
       renderShape 0 $ Circular ((-16):+12*gsign) 4
-     else return ()
     where
       nvx:+nvy = nv
       gsign = signum $ imagPart g
 
   renderGameObject me@ScrambleHatch{position = (x:+y),hitDisp=_,gravity= g,gateAngle = angl} = preservingMatrix $ do
-    translate (Vector3 x y 0)
-    color (Color3 (1.2*(1-hpRate)) 0.5 (1.6*hpRate)  :: Color3 Double)
+    translate2D x y
+    color $ Color3 (1.2*(1-hpRate)) 0.5 (1.6*hpRate)
     if gsign >0 then rotateX 180 else return() -- after this you can assume that the object is not upside down
     renderPrimitive LineLoop $ ugoVertices2DFreq 0 (angl*2) 1 $ [(-45,1),(-45,hatchHeight),(45,hatchHeight),(45,1)]
     preservingMatrix $ do
@@ -287,28 +295,22 @@ renderMonadius (Monadius (variables,objects)) = do
   renderGameObject LandScapeBlock{position=pos,hitDisp=hd} = preservingMatrix $ do
     color $ Color3 0.6 0.2 0
     renderShape pos hd
-    if treasure!!(baseGameLevel variables) then do
-      color $ Color3 0.7 0.23 0
-      translate $ Vector3 0 0 60
-      renderShape pos hd
-      color $ Color3 0.5 0.17 0
-      translate (Vector3 0 0 (-120))
-      renderShape pos hd
-     else return()
-
-  renderGameObject me@Particle{position = x:+y,particleColor=Color3 mr mg mb} = preservingMatrix $ do
-    if age me>=0 then do
-      translate $ Vector3 x y 0
-      color $ Color3 r g b
-      renderShape (0:+0) $ Circular (0:+0) (size me*extent)
-      else return ()
+    when (treasure!!(baseGameLevel variables)) $ do
+      render (Color3 0.7 0.23 0) (Vector3 0 0 60)
+      render (Color3 0.5 0.17 0) (Vector3 0 0 (-120))
     where
-      extent = 0.5 +  intCut (intToDouble(age me) / decayTime me)
-      decay =  exp $  intCut $ -intToDouble (age me) / decayTime me
-      whiteout = exp $ intCut $  -2*intToDouble (age me) / decayTime me
-      r = mr * decay + whiteout
-      g = mg * decay + whiteout
-      b = mb * decay + whiteout
+      render col trans = color col >> translate trans >> renderShape pos hd
+
+  renderGameObject me@Particle{position = x:+y,particleColor=pc} = preservingMatrix $ do
+    when (age me>=0) $ do
+      translate2D x y
+      color $ modifyColor (\e -> e * decay + whiteout) pc
+      renderShape (0:+0) $ Circular (0:+0) (size me*extent)
+    where
+      p n = intCut $ (*n) $ intToDouble (age me) / decayTime me
+      extent = 0.5 + p 1
+      decay =  exp $ p (-1)
+      whiteout = exp $ p (-2)
       intCut :: Double -> Double
       intCut = intToDouble.round
 
@@ -321,9 +323,10 @@ renderMonadius (Monadius (variables,objects)) = do
     putDebugStrLn str
 
   renderGameObject _ = return ()
-  vicViper = fromJust $ find (\obj -> case obj of
-                            VicViper{} -> True
-                            _          -> False) objects
+
+  vicViper = head $ filter (\obj -> case obj of
+                              VicViper{} -> True
+                              _          -> False) objects
 
   renderShape :: Complex Double -> Shape -> IO ()
   renderShape (x:+y) s = case s of

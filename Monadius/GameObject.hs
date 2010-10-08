@@ -117,7 +117,8 @@ data GameObject = -- objects that are actually rendered and moved.
     tag :: Maybe Int, fever :: Int
   } | -- generates many flyers for additional fun if there are none of them
   DebugMessage {tag :: Maybe Int,debugMessage :: String} |
-  ScoreFragment{tag :: Maybe Int,score :: Int}
+  ScoreFragment{tag :: Maybe Int,score :: Int} 
+  deriving (Eq)
 
 
 freshDiamondBomb, freshFlyer, freshInterceptor, freshOption, freshPowerUpCapsule, freshPowerUpGauge, freshShield, freshStalk, freshStandardLaser, freshStandardMissile, freshStandardRailgun, freshTurnGear, freshTurnGearSquad, freshVicViper :: GameObject

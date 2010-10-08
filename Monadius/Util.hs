@@ -59,7 +59,7 @@ instance ComplexShape Shape where
 
 data Shape = Circular {center :: Complex Double, radius :: Double} |
              Rectangular {bottomLeft :: Complex Double, topRight :: Complex Double} |
-             Shapes {children :: [Shape]}
+             Shapes {children :: [Shape]} deriving (Eq)
 
 -- | Put a Rectangle coordinates into normal order so that collision will go properly.
 regulate :: Shape -> Shape
