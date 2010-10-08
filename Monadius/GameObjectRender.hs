@@ -12,6 +12,11 @@ import GLWrapper
 import GameObject
 import GOConst
 
+rotateX, rotateY, rotateZ :: Double -> IO ()
+rotateX rad = rotate rad (Vector3 1 0 0)
+rotateY rad = rotate rad (Vector3 0 1 0)
+rotateZ rad = rotate rad (Vector3 0 0 1)
+
 standardUgoInterval :: Int
 standardUgoInterval = 7
 
@@ -66,7 +71,7 @@ renderMonadius (Monadius (variables,objects)) = do
         preservingMatrix $ do
           ugoTranslate x 0 0 3
           translate (Vector3 (w/2) 0 0)
-          rotate (3 * sin(intToDouble gameclock/10)) (Vector3 0 0 1)
+          rotateZ (3 * sin(intToDouble gameclock/10))
           translate (Vector3 (-w/2) 0 0)
           renderPowerUpName i
 
@@ -79,7 +84,7 @@ renderMonadius (Monadius (variables,objects)) = do
         preservingMatrix $ do
           ugoTranslateFreq x 0 0 5 2
           translate (Vector3 (w/2) 0 0)
-          rotate (10 * sin(intToDouble gameclock/5)) (Vector3 0 0 1)
+          rotateZ (10 * sin(intToDouble gameclock/5))
           scale 1.2 1.2 0
           translate (Vector3 (-w/2) 0 0)
           renderPowerUpName i
@@ -134,7 +139,7 @@ renderMonadius (Monadius (variables,objects)) = do
   renderGameObject StandardMissile{position=x:+y,velocity=v} = preservingMatrix $ do
     let dir = (phase v) :: Double
     translate (Vector3 x y 0)
-    rotate (dir / pi * 180) (Vector3 0 0 1)
+    rotateZ (dir / pi * 180)
     color (Color3 1.0 0.9 0.5)
     renderPrimitive LineLoop $ ugoVertices2D 0 1 [(0,0),(-7,2),(-7,-2)]
     renderPrimitive LineStrip $ ugoVertexFreq (-11) 0 0 1 1 >> ugoVertexFreq (-17) 0 0 7 1
@@ -143,7 +148,7 @@ renderMonadius (Monadius (variables,objects)) = do
     preservingMatrix $ do
       let (_,phse)=polar v
       translate (Vector3 x y 0)
-      rotate (phse / pi * 180) (Vector3 0 0 1)
+      rotateZ (phse / pi * 180)
       color (Color3 1.0 0.9 0.5)
       renderPrimitive Lines $ ugoVertices2D 0 1 [(0,0),((-5),0),((-9),0),((-11),0)]
 
@@ -152,17 +157,17 @@ renderMonadius (Monadius (variables,objects)) = do
     else preservingMatrix $ do
       let (_,phs)=polar v
       translate (Vector3 x y 0)
-      rotate (phs / pi * 180) (Vector3 0 0 1)
+      rotateZ (phs / pi * 180)
       color (Color3 0.7 0.9 1.0)
       renderPrimitive Lines $ ugoVertices2D 0 0 [(12,0),(-laserSpeed,0)]
 
   renderGameObject Shield{position=x:+y, size = r,angle = theta} = preservingMatrix $ do
     translate (Vector3 x y 0)
-    rotate theta (Vector3 0 0 1)
+    rotateZ theta
     renderWithShade (Color3 0.375 0.75 0.9375) (Color3 0.86 0.86 0.86) $ do
       scale r r 0
       renderTriangle
-      rotate 60 (Vector3 0 0 1)
+      rotateZ 60
       renderTriangle where
         renderTriangle = do
           renderPrimitive LineLoop $ ugoVertices2DFreq 0 0.1 1 $ map (\t -> (cos t,sin t)) [0,pi*2/3,pi*4/3]
@@ -172,9 +177,9 @@ renderMonadius (Monadius (variables,objects)) = do
     translate (Vector3 x y 0)
     renderWithShade (Color3 0.9 0.9 0.9) (Color3 0.4 0.4 0.4) $ do
       futa >> neji >> toge
-      rotate (180) (Vector3 1 0 0) >> toge
-      rotate (180) (Vector3 0 1 0) >> futa >> neji >> toge
-      rotate (180) (Vector3 1 0 0) >> toge
+      rotateX (180) >> toge
+      rotateY (180) >> futa >> neji >> toge
+      rotateX (180) >> toge
     renderWithShade (Color3 1.0 0.0 0.0) (Color3 0.3 0.3 0.0) $ do
       nakami
       where
@@ -187,7 +192,7 @@ renderMonadius (Monadius (variables,objects)) = do
 
   renderGameObject DiamondBomb{position = (x:+y),age=clock} = preservingMatrix $ do
     translate (Vector3 x y 0)
-    rotate (90*intToDouble(clock`mod`4)) (Vector3 0 0 1)
+    rotateZ (90*intToDouble(clock`mod`4))
     color (Color3 1 1 1)
     renderPrimitive LineLoop $ vertices2D 0 $ [a,b,c]
     color (Color3 0.5 0.5 0.5)
@@ -204,11 +209,11 @@ renderMonadius (Monadius (variables,objects)) = do
   renderGameObject TurnGear{position=x:+y,age=clock} = preservingMatrix $ do
     translate (Vector3 x y 0)
     color $ Color3 1.0 0.7 1.0
-    rotate (5 * intToDouble clock) $ Vector3 0 0 1
+    rotateZ (5 * intToDouble clock)
     renderWing
-    rotate 120 $ Vector3 0 0 1
+    rotateZ 120
     renderWing
-    rotate 120 $ Vector3 0 0 1
+    rotateZ 120
     renderWing
     where
       renderWing = renderPrimitive LineLoop $ ugoVertices2D 0 2 $ map ((\(t:+u) -> (t,u)) . (\(r,t) -> mkPolar r (pi*t)) )
@@ -217,7 +222,7 @@ renderMonadius (Monadius (variables,objects)) = do
   renderGameObject Flyer{position=x:+y,age=_,velocity = v,hasItem=item}  = preservingMatrix $ do
     translate (Vector3 x y 0)
     color (if item then Color3 1.0 0.2 0.2 else Color3 0.3 1.0 0.7)
-    rotate (phase v / pi * 180) (Vector3 0 0 1)
+    rotateZ (phase v / pi * 180)
     renderPrimitive LineLoop $ ugoVertices2D 0 2 $ [(-2,0),(-6,4),(-10,0),(-6,-4)]
     renderPrimitive LineLoop $ ugoVertices2D 0 2 $ [(2,4),(16,4),(4,16),(-10,16)]
     renderPrimitive LineLoop $ ugoVertices2D 0 2 $ [(2,-4),(16,-4),(4,-16),(-10,-16)]
@@ -241,7 +246,7 @@ renderMonadius (Monadius (variables,objects)) = do
     translate (Vector3 x y 0)
     color (if item then Color3 1.0 0.2 0.2 else Color3 0.3 1.0 0.7)
     renderShape (0:+0) hd
-    if gsign >0 then rotate 180 (Vector3 1 0 0) else return() -- after this you can assume that the object is not upside down
+    if gsign >0 then rotateX 180 else return() -- after this you can assume that the object is not upside down
     renderPrimitive LineStrip $ ugoVertices2D 0 2 $ [(15,-5),(25,-5+absvy*leg),(25,-25+absvy*leg)]
     renderPrimitive LineStrip $ ugoVertices2D 0 2 $ [(-15,-5),(-25,-5+absvy*leg),(-25,-25+absvy*leg)]
     where
@@ -265,15 +270,15 @@ renderMonadius (Monadius (variables,objects)) = do
   renderGameObject me@ScrambleHatch{position = (x:+y),hitDisp=_,gravity= g,gateAngle = angl} = preservingMatrix $ do
     translate (Vector3 x y 0)
     color (Color3 (1.2*(1-hpRate)) 0.5 (1.6*hpRate)  :: Color3 Double)
-    if gsign >0 then rotate 180 (Vector3 1 0 0) else return() -- after this you can assume that the object is not upside down
+    if gsign >0 then rotateX 180 else return() -- after this you can assume that the object is not upside down
     renderPrimitive LineLoop $ ugoVertices2DFreq 0 (angl*2) 1 $ [(-45,1),(-45,hatchHeight),(45,hatchHeight),(45,1)]
     preservingMatrix $ do
       translate (Vector3 45 hatchHeight 0)
-      rotate (-angl/pi*180) (Vector3 0 0 1)
+      rotateZ (-angl/pi*180)
       renderPrimitive LineLoop $ ugoVertices2DFreq 0 (angl*1) 2 $ [(0,0),(-45,0),(-45,10)]
     preservingMatrix $ do
       translate (Vector3 (-45) hatchHeight 0)
-      rotate (angl/pi*180) (Vector3 0 0 1)
+      rotateZ (angl/pi*180)
       renderPrimitive LineLoop $ ugoVertices2DFreq 0 (angl*1) 2 $ [(0,0),(45,0),(45,10)]
     where
       gsign = signum $ imagPart g
@@ -284,7 +289,7 @@ renderMonadius (Monadius (variables,objects)) = do
     renderShape pos hd
     if treasure!!(baseGameLevel variables) then do
       color $ Color3 0.7 0.23 0
-      translate (Vector3 0 0 60)
+      translate $ Vector3 0 0 60
       renderShape pos hd
       color $ Color3 0.5 0.17 0
       translate (Vector3 0 0 (-120))
@@ -293,8 +298,8 @@ renderMonadius (Monadius (variables,objects)) = do
 
   renderGameObject me@Particle{position = x:+y,particleColor=Color3 mr mg mb} = preservingMatrix $ do
     if age me>=0 then do
-      translate (Vector3 x y 0)
-      color (Color3 r g b)
+      translate $ Vector3 x y 0
+      color $ Color3 r g b
       renderShape (0:+0) $ Circular (0:+0) (size me*extent)
       else return ()
     where
@@ -326,39 +331,34 @@ renderMonadius (Monadius (variables,objects)) = do
       renderPrimitive LineLoop $ vertices2D 0 [(x+l,y+b),(x+l,y+t),(x+r,y+t),(x+r,y+b)]
     Circular{center=cx:+cy, radius = r} -> preservingMatrix $ do
       translate (Vector3 (cx+x) (cy+y) 0)
-      rotate (intToDouble gameclock*(45+pi)) (Vector3 0 0 1)
+      rotateZ (intToDouble gameclock*(45+pi))
       scale r r 1
       renderPrimitive LineLoop $ vertices2D 0 $ map (\t -> (cos(2/7*t*pi),sin(2/7*t*pi))) [0..6]
     Shapes{children=cs} -> mapM_ (renderShape (x:+y)) cs
 
 
 
---   ugoVertex :: Double -> Double -> Double -> Double -> IO ()
---   ugoVertex x y z r = ugoVertexFreq x y z r standardUgoInterval
-
-  ugoVertexFreq :: Double -> Double -> Double -> Double -> Int -> IO ()
   -- renders a vertex at somewhere near (x y z),
   -- but the point wiggles around in ugoRange when each interval comes.
-  ugoVertexFreq x y z ugoRange intrvl = vertex $ Vertex3 (x+dr*cos theta) (y+dr*sin theta) z where
-    flipper :: Double
-    flipper = fromIntegral $ (gameclock `div` intrvl) `mod` 1024
-    dr = ugoRange * vibrator(phi)
-    theta = (x + sqrt(2)*y + sqrt(3)*z + 573) * 400 * flipper
-    phi   = (x + sqrt(3)*y + sqrt(7)*z + 106) * 150 * flipper
-    vibrator a = 0.5 * (1 + sin a)
+  ugoVertexFreq x y z = ugoFreq f x y z
+    where f (x',y',z') = vertex $ Vertex3 x' y' z'
 
   ugoTranslate x y z ugoRange = ugoTranslateFreq x y z ugoRange standardUgoInterval
-  ugoTranslateFreq x y z ugoRange intvl = translate (Vector3 (x+dr*cos theta) (y+dr*sin theta) z) where
-    flipper :: Double
-    flipper = fromIntegral $ (gameclock `div` intvl) `mod` 1024
-    dr = ugoRange * vibrator(phi)
-    theta = (x + sqrt(2)*y + sqrt(3)*z + 573) * 400 * flipper
-    phi   = (x + sqrt(3)*y + sqrt(7)*z + 106) * 150 * flipper
-    vibrator a = 0.5 * (1 + sin a)
+  ugoTranslateFreq x y z = ugoFreq f x y z
+    where f (x',y',z') = translate $ Vector3 x' y' z'
+
+  ugoFreq f x y z ugoRange interval = f (x+dr*cos theta, y+dr*sin theta, z)
+    where
+      flipper :: Double
+      flipper = fromIntegral $ (gameclock `div` interval) `mod` 1024
+      dr = ugoRange * vibrator(phi)
+      theta = (x + sqrt(2)*y + sqrt(3)*z + 573) * 400 * flipper
+      phi   = (x + sqrt(3)*y + sqrt(7)*z + 106) * 150 * flipper
+      vibrator a = 0.5 * (1 + sin a)
 
   ugoVertices2D z r xys = ugoVertices2DFreq z r standardUgoInterval xys
   ugoVertices2DFreq z r intrvl xys = mapM_ (\(x,y) -> ugoVertexFreq x y z r intrvl) xys
 
-  vertices2D :: Double -> [(Double,Double)] -> IO ()
-  vertices2D z xys = mapM_ (\(x,y) -> vertex $ Vertex3 x y z) xys
+vertices2D :: Double -> [(Double,Double)] -> IO ()
+vertices2D z xys = mapM_ (\(x,y) -> vertex $ Vertex3 x y z) xys
 
