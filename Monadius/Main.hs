@@ -107,7 +107,8 @@ main = do
   mainLoop
   destroyWindow curwnd
 
-  `catch` (\err -> print err)
+-- error on base 4.x
+--  `catch` (\_ -> return ())
 
   where
     getReplayFilename [] = Nothing
@@ -123,7 +124,7 @@ main = do
                      | otherwise = str
 
 exitLoop :: IO a
-exitLoop = throwIO $ ExitException ExitSuccess
+exitLoop = throwIO ExitSuccess
 
 initMatrix :: IO ()
 initMatrix = do

@@ -15,7 +15,7 @@ description:         A fast-paced 2-D scrolling vector graphics clone of the arc
                      The Darcs repo is available at <http://code.haskell.org/monadius/>.
 homepage:            http://www.geocities.jp/takascience/haskell/monadius_en.html
 
-build-depends:       base, array, directory, GLUT, OpenGL
+build-depends:       base>=4, array, directory, GLUT, OpenGL
 build-type:          Simple
 data-files:          readme-e.txt, readme-j.txt
 tested-with:         GHC==6.8.2
