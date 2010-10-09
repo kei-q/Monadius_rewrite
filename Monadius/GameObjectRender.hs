@@ -1,3 +1,4 @@
+{-# LANGUAGE ImplicitParams #-}
 module GameObjectRender
   ( renderMonadius
   ) where
@@ -35,12 +36,20 @@ renderWithShade colorA colorB rndrr = do
   color colorA
   preservingMatrix rndrr
 
-renderScore :: Vector3 Double -> String -> IO ()
-renderScore pos str = preservingMatrix $ do
+renderScore' :: Vector3 Double -> String -> IO ()
+renderScore' pos str = preservingMatrix $ do
   translate pos
   renderWithShade (Color3 1 1 1) (Color3 0 0 1) $ do
     scale 0.2 0.2 0.2
     renderString MonoRoman str
+
+renderScore variables = do
+  renderScore' (Vector3 (-300) 220 0) scoreStr
+  renderScore' (Vector3 (   0) 220 0) scoreStr2
+  where
+    scoreStr = "1P "  ++ ((padding '0' 8).show.totalScore) variables
+    scoreStr2 | Just score <- playTitle variables = score
+              | otherwise = "HI "++((padding '0' 8).show.hiScore) variables
 
 -------------------------
 --
@@ -48,19 +57,16 @@ renderScore pos str = preservingMatrix $ do
 --
 -------------------------
 renderMonadius :: Monadius -> IO ()
-renderMonadius (Monadius (variables,objects)) = do
-  mapM_ renderGameObject objects
-  renderScore (Vector3 (-300) 220 0) scoreStr
-  renderScore (Vector3 (   0) 220 0) scoreStr2
+renderMonadius (Monadius (variables,objects))
+  = let ?gameclock = gameclock
+    in mapM_ renderGameObject objects
+       >> renderScore variables
   where
-  scoreStr = "1P "  ++ ((padding '0' 8).show.totalScore) variables
-  scoreStr2 | Just score <- playTitle variables = score
-            | otherwise = "HI "++((padding '0' 8).show.hiScore) variables
 
   gameclock = gameClock variables
 
   -- returns an IO monad that can render the object.
-  renderGameObject :: GameObject -> IO ()
+  -- renderGameObject :: GameObject -> IO ()
   renderGameObject gauge@PowerUpGauge{} = preservingMatrix $ do
     let x:+y = position gauge
     translate2D x y
@@ -346,24 +352,24 @@ renderMonadius (Monadius (variables,objects)) = do
 
   -- renders a vertex at somewhere near (x y z),
   -- but the point wiggles around in ugoRange when each interval comes.
-  ugoVertexFreq x y z = ugoFreq f x y z
-    where f (x',y',z') = vertex $ Vertex3 x' y' z'
+ugoVertexFreq x y z = ugoFreq f x y z
+  where f (x',y',z') = vertex $ Vertex3 x' y' z'
 
-  ugoTranslate x y z ugoRange = ugoTranslateFreq x y z ugoRange standardUgoInterval
-  ugoTranslateFreq x y z = ugoFreq f x y z
-    where f (x',y',z') = translate $ Vector3 x' y' z'
+ugoTranslate x y z ugoRange = ugoTranslateFreq x y z ugoRange standardUgoInterval
+ugoTranslateFreq x y z = ugoFreq f x y z
+  where f (x',y',z') = translate $ Vector3 x' y' z'
 
-  ugoFreq f x y z ugoRange interval = f (x+dr*cos theta, y+dr*sin theta, z)
-    where
-      flipper :: Double
-      flipper = fromIntegral $ (gameclock `div` interval) `mod` 1024
-      dr = ugoRange * vibrator(phi)
-      theta = (x + sqrt(2)*y + sqrt(3)*z + 573) * 400 * flipper
-      phi   = (x + sqrt(3)*y + sqrt(7)*z + 106) * 150 * flipper
-      vibrator a = 0.5 * (1 + sin a)
+ugoFreq f x y z ugoRange interval = f (x+dr*cos theta, y+dr*sin theta, z)
+  where
+    flipper :: Double
+    flipper = fromIntegral $ (?gameclock `div` interval) `mod` 1024
+    dr = ugoRange * vibrator(phi)
+    theta = (x + sqrt(2)*y + sqrt(3)*z + 573) * 400 * flipper
+    phi   = (x + sqrt(3)*y + sqrt(7)*z + 106) * 150 * flipper
+    vibrator a = 0.5 * (1 + sin a)
 
-  ugoVertices2D z r xys = ugoVertices2DFreq z r standardUgoInterval xys
-  ugoVertices2DFreq z r intrvl xys = mapM_ (\(x,y) -> ugoVertexFreq x y z r intrvl) xys
+ugoVertices2D z r xys = ugoVertices2DFreq z r standardUgoInterval xys
+ugoVertices2DFreq z r intrvl xys = mapM_ (\(x,y) -> ugoVertexFreq x y z r intrvl) xys
 
 vertices2D :: Double -> [(Double,Double)] -> IO ()
 vertices2D z xys = mapM_ (\(x,y) -> vertex $ Vertex3 x y z) xys
