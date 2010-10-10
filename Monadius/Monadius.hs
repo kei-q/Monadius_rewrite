@@ -90,20 +90,18 @@ landScapeSensitive _ = False
 updateMonadius :: [Key] -> Monadius -> Monadius
 updateMonadius realKeys (Monadius (variables,objects))
  = Monadius (newVariables,newObjects) where
-  gameVariables = variables
-  gameObjects   = objects
-  gameLevel = baseGameLevel gameVariables
+  gameLevel = baseGameLevel variables
   bacterianShotSpeed = bacterianShotSpeedList!!gameLevel
 
 
   keys = if hp vicViper<=0 then [] else realKeys
    -- almost all operation dies when vicViper dies. use realKeys to fetch unaffected keystates.
 
-  (newNextTag,newObjects) = issueTag (nextTag variables) $
-                            ((loadObjects clock isEasy vicViper gameObjects) ++) $
-                            filterJust.map scroll $
-                            concatMap updateGameObject $
-                            gameObjectsAfterCollision
+  (newNextTag,newObjects) = issueTag (nextTag variables)
+                          $ ((loadObjects clock isEasy vicViper objects) ++)
+                          $ filterJust.map scroll
+                          $ concatMap updateGameObject 
+                          $ gameObjectsAfterCollision
   gameObjectsAfterCollision = collide objects
   -- * collision must be done BEFORE updateGameObject(moving), for
   --   players would like to see the moment of collision.
@@ -120,13 +118,13 @@ updateMonadius realKeys (Monadius (variables,objects))
     gameClock = (\c -> if hp vicViper<=0 then c else if goNextStage then 0 else c+1) $ gameClock variables,
     baseGameLevel = (\l -> if goNextStage then l+1 else l) $ baseGameLevel variables,
     totalScore = newScore,
-    hiScore = max (hiScore variables) newScore
+    hiScore = hiScore variables `max` newScore
   }
    where
     goNextStage = gameClock variables > stageClearTime
-    newScore = totalScore variables +  (sum) (map (\obj -> case obj of
+    newScore = totalScore variables + sum (map (\obj -> case obj of
       ScoreFragment{score = p} -> p
-      _ -> 0) objects  :: [Int])
+      _ -> 0) objects)
 
   updateGameObject :: GameObject -> [GameObject]
   -- update each of the objects and returns list of resulting objects.
@@ -162,10 +160,9 @@ updateMonadius realKeys (Monadius (variables,objects))
       (powerUpPointer vic ==0 ||
        powerUpLevels vic!powerUpPointer vic<powerUpLimits!!powerUpPointer vic)
     speeds = [2,4,6,8,11,14] ++ speeds
-    shieldCount :: Int
     shieldCount = sum $ map (\o -> case o of
       Shield{} -> 1
-      _ -> 0) gameObjects
+      _ -> 0) objects
     newShields = if (doesPowerUp && powerUpPointer vic==gaugeOfShield) then
       [freshShield{position=350:+260   ,placement=40:+shieldPlacementMargin,   angle=30,omega=10   },
        freshShield{position=350:+(-260),placement=40:+(-shieldPlacementMargin),angle=0 ,omega=(-10)}]
@@ -197,7 +194,7 @@ updateMonadius realKeys (Monadius (variables,objects))
 
   updateGameObject laser@StandardLaser{} = if hp laser <=0 then [] else
     [laser{position=(\(x:+_) -> x:+parentY) $ position laser + velocity laser,age=age laser+1}]  where
-      myParent = head $ filter (\o -> tag o==Just (parentTag laser)) gameObjects
+      myParent = head $ filter (\o -> tag o==Just (parentTag laser)) objects
       _:+parentY = position myParent
 
   updateGameObject shield@Shield{} = if(hp shield<=0) then [] else [
@@ -285,7 +282,7 @@ updateMonadius realKeys (Monadius (variables,objects))
         then [jikiNeraiDan pos (bacterianShotSpeed:+0)] else []
       myInterval = if m==00 || m==03 then flyerShotInterval!!gameLevel else inceptorShotInterval!!gameLevel
 
-  updateGameObject me@Ducker{position=pos@(_:+_),velocity = v,age=myAge,gVelocity= vgrav,touchedLand = touched} =
+  updateGameObject me@Ducker{position=pos,velocity = v,age=myAge,gVelocity= vgrav,touchedLand = touched} =
     if hp me <=0 then ([freshScore 130] ++ freshExplosions pos ++ if hasItem me then [freshPowerUpCapsule{position=pos}] else[]) else
     [me{
       age=myAge+1,
@@ -406,10 +403,10 @@ updateMonadius realKeys (Monadius (variables,objects))
     myTag = fromJust $ tag obj
     shotCount = length $ filter (\o -> case o of
                             StandardRailgun{} -> parentTag o==myTag
-                            _             -> False) gameObjects
+                            _             -> False) objects
     missileCount = length $ filter (\o -> case o of
                                            StandardMissile{} -> True
-                                           _                 -> False) gameObjects
+                                           _                 -> False) objects
 
     types = weaponTypes vicViper
 
@@ -469,7 +466,7 @@ updateMonadius realKeys (Monadius (variables,objects))
 
     objectsWhoseHitClassIsMyWeakPoint :: GameObject -> [GameObject]
     objectsWhoseHitClassIsMyWeakPoint me =
-      filter (\him -> not $ null $ (weakPoint me) `intersect` (hitClass him)) gameObjects
+      filter (\him -> not $ null $ (weakPoint me) `intersect` (hitClass him)) objects
 
     hitClass :: GameObject -> [HitClass]
     hitClass VicViper{} = [MetalionBody,ItemReceiver]
@@ -567,7 +564,7 @@ updateMonadius realKeys (Monadius (variables,objects))
       scrollBehavior Option {}  = NoRollOut False
       -- We use the more verbose way of setting records here to guarantee
       -- 'range' is needed so -Wall doesn't get fooled.
-      scrollBehavior StandardRailgun{} = RollOutAuto {doesScroll = True, range = shotSpeed}
+      scrollBehavior StandardRailgun{} = RollOutAuto True shotSpeed
       scrollBehavior StandardLaser{} = RollOutAuto True laserSpeed
       scrollBehavior PowerUpGauge{} = NoRollOut False
       scrollBehavior PowerUpCapsule{} = RollOutAuto True 40
