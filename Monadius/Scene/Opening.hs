@@ -97,9 +97,11 @@ renderMenu :: Int -> Int -> (Int,Int) -> IO ()
 renderMenu clock menuCursor (savedLevel,savedArea) = do
   let r = renderStringGrad clock Roman 60
   let v = Vector2 (-230) (-200)
+
   select $ menuCursor==0
   render v (0.2, 0.2, 0.3)
     $ r $ (cursor $ menuCursor==0) ++ "New Game"
+
   select $ menuCursor==1  
   render (addVX v 300) (0.2, 0.2, 0.3)
     $ r $ (cursor $ menuCursor==1) ++ "Continue " ++ (show savedLevel) ++ "-" ++ (show $ (+1) savedArea)

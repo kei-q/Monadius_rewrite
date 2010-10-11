@@ -17,7 +17,7 @@ import Prelude hiding (catch)
 
 import System.FilePath (takeBaseName)
 import Data.IORef
-import Data.List (isSuffixOf, nub)
+import Data.List (isSuffixOf, nub, find)
 import System.Environment (getArgs)
 
 import Demo -- (ReplayInfo(), demoData)
@@ -66,51 +66,56 @@ mainProc  vars gs = sceneProc proc next
 
 
 readRecordSettings args
-  | Just replay <- getReplayFilename args = do
+  | Just replay <- find (replayFileExtension `isSuffixOf`) args = do
     ReplayInfo (ss,keystr) <- loadReplay replay
     return (Playback,decode keystr,ss,Just $ takeBaseName replay)
   | otherwise = do
     let mode = if "-r" `elem` args then Play else Record
     return (mode, [], (1,0), Nothing)
   where
-    getReplayFilename [] = Nothing
-    getReplayFilename a = (Just . head . candidates) a
-    loadReplay :: String-> IO ReplayInfo
+    loadReplay :: String -> IO ReplayInfo
     loadReplay filename = readFile filename >>= (return . read)
-    candidates args = filter (replayFileExtension `isSuffixOf`) args
+
+initWindow :: String -> [String] -> IO Window
+initWindow title args = do
+  initialWindowSize $= Size 640 480
+  initialDisplayMode $= [RGBAMode,DoubleBuffered]
+
+  wnd <- createWindow title
+  if "-f" `elem` args
+   then do
+    gameModeCapabilities $= [
+        Where' GameModeWidth IsLessThan 650,
+        Where' GameModeHeight IsLessThan 500
+      ]
+    (wnd2,_) <- enterGameMode
+    destroyWindow wnd
+    return wnd2
+   else return wnd
 
 main :: IO ()
 main = do
   args <- getArgs
   _ <- getArgsAndInitialize
 
+  curwnd <- initWindow "Monadius" args
+
   (recMode,keys,rss,repName) <- readRecordSettings args
+  let initVars = GlobalVariables { saveState = (1,0)
+    , isCheat = False
+    , recorderMode=recMode
+    , playbackKeys=keys
+    , playbackSaveState = rss
+    , playBackName=repName
+    , recordSaveState=(1,0)
+    , demoIndex=0
+    , saveHiScore=0
+    }
 
   keystate <- newIORef []
   let ?ks = keystate
-  cp <- newIORef (openingProc GlobalVariables{saveState = (1,0) ,isCheat = False,
-    recorderMode=recMode,playbackKeys=keys,playbackSaveState = rss,recordSaveState=(1,0),demoIndex=0,
-    playBackName=repName,saveHiScore=0} (0,0))
-  initialWindowSize $= Size 640 480
-  initialDisplayMode $= [RGBAMode,DoubleBuffered]
-
-  wnd <- createWindow "Monadius"
-
-
-  curwnd <- if "-f" `elem` args then do
-    gameModeCapabilities $= [
-        Where' GameModeWidth IsLessThan 650,
-        Where' GameModeHeight IsLessThan 500
-      ]
-
-    (wnd2,_) <- enterGameMode
-    destroyWindow wnd
-    return wnd2
-   else do
-    return wnd
-
+  cp <- newIORef $ openingProc initVars (0,0)
   displayCallback $= dispProc cp
-
   keyboardMouseCallback $= Just (keyProc keystate)
   addTimerCallback 16 (timerProc (dispProc cp))
 
