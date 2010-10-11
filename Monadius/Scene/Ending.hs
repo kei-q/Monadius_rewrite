@@ -1,19 +1,22 @@
 module Scene.Ending
    ( scene
-   , EndState(..)
+   , EndScene(..)
    ) where
 
 import Control.Monad (zipWithM_)
 
 import GLWrapper
+import Keys
 
-data EndState = Ending Double | Opening
+data EndScene = Next Double | End
+
 
 cWhite :: IO ()
 cWhite = color $ Color3 1.0 1.0 1.0
 
-scene :: Int -> Double -> [Key] -> IO EndState
-scene stage counter keystate = do
+scene :: Int -> Double -> KeyF -> IO EndScene
+scene _ _ keys | keys keySpace = return End
+scene stage counter _ = do
   initGraphics
 
   cWhite
@@ -24,10 +27,7 @@ scene stage counter keystate = do
     (stuffRoll stage) [0,60..]
 
   swapBuffers
-
-  return $ if Char ' ' `elem` keystate
-     then Opening
-     else Ending $ 2420 `min` counter + 2
+  return $ Next (2420 `min` counter + 2)
 
 stuffRoll :: Int -> [String]
 stuffRoll stage = [

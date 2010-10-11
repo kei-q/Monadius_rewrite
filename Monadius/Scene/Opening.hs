@@ -8,7 +8,6 @@ import Prelude hiding (catch)
 
 import Data.IORef
 import Data.Complex -- ((:+), Complex())
-import Data.Maybe (fromJust, isJust)
 
 import Demo -- (ReplayInfo(), demoData)
 import Monadius
@@ -19,7 +18,6 @@ import GLWrapper hiding (color)
 import qualified GLWrapper as GLW (color)
 
 import GlobalVariables
-
 
 presentationMode :: Bool
 presentationMode = True
@@ -99,16 +97,17 @@ renderMenu :: Int -> Int -> (Int,Int) -> IO ()
 renderMenu clock menuCursor (savedLevel,savedArea) = do
   let r = renderStringGrad clock Roman 60
   let v = Vector2 (-230) (-200)
-  if menuCursor==0 then cYellow else cWhite
+  select $ menuCursor==0
   render v (0.2, 0.2, 0.3)
     $ r $ (cursor $ menuCursor==0) ++ "New Game"
-    
-  if menuCursor==1 then cYellow else cWhite
+  select $ menuCursor==1  
   render (addVX v 300) (0.2, 0.2, 0.3)
     $ r $ (cursor $ menuCursor==1) ++ "Continue " ++ (show savedLevel) ++ "-" ++ (show $ (+1) savedArea)
   where
     cursor True = ">"
     cursor False = " "
+    select True = cYellow
+    select False = cWhite
 
 cWhite, cYellow :: IO ()
 cWhite  = color 1.0 1.0 1.0
@@ -142,7 +141,7 @@ renderInstructions clock = do
 
 scene :: OpenVars -> GlobalVariables -> [Key] -> IO OpenState
 scene (clock,menuCursor) vars keystate
-  | recorderMode vars == Playback = gameStart Playback vars (fst $ playbackSaveState vars) (snd $ playbackSaveState vars) (isCheat vars)
+  | recorderMode vars == Playback = gameStart Playback vars (playbackSaveState vars) (isCheat vars)
   | clock > demoStartTime = demoStart vars
   | otherwise = do
   initGraphics
@@ -154,28 +153,26 @@ scene (clock,menuCursor) vars keystate
 
   swapBuffers
 
+  let gameStart' = gameStart (recorderMode vars) vars
   if Char ' ' `elem` keystate && clock >= timeLimit
-    then
-      if menuCursor == 0 then
-        gameStart (recorderMode vars) vars 1 0 False
-      else
-        let (savedLevel,savedArea) = saveState vars
-        in gameStart (recorderMode vars) vars savedLevel savedArea (isCheat vars)
-    else if isJust $ getNumberKey keystate
-      then gameStart (recorderMode vars) vars (fromJust $ getNumberKey keystate) 0 True
-      else return $ Opening (clock+1, nextCursor menuCursor keystate) vars
+    then if menuCursor == 0
+      then gameStart' (1,0) False
+      else gameStart' (saveState vars) (isCheat vars)
+    else case getNumberKey keystate of
+      Just n  -> gameStart' (n,0) True
+      Nothing -> return $ Opening (clock+1, nextCursor menuCursor keystate) vars
   where
     demoStartTime | presentationMode = 480
                   | otherwise = 1800
 
     demoStart vrs = do
       let i = demoIndex vrs
-      let ReplayInfo ((lv,area),dat) = demoData!!i
-      gameStart  Playback vrs{
+      let ReplayInfo (state,dat) = demoData!!i
+      gameStart Playback vrs{
         playBackName = Just "Press Space",
         playbackKeys = decode dat,
-        demoIndex = demoIndex vrs+1
-      } lv area (isCheat vrs)
+        demoIndex = i + 1
+      } state (isCheat vrs)
 
     getNumberKey ks = foldl mplus Nothing $ map keyToNumber ks
 
@@ -185,7 +182,7 @@ scene (clock,menuCursor) vars keystate
       | otherwise      = cursor
       where check k = SpecialKey k `elem` keys
 
-    gameStart recordermode vrs level area ischeat = do
+    gameStart recordermode vrs (level,area) ischeat = do
       -- it is possible to temporary set (recordermode /= recorderMode vars)
       gs <- newIORef $ initialRecorder recordermode (playbackKeys vrs) (initialMonadius GameVariables{
       totalScore=0, flagGameover=False,  hiScore=saveHiScore vrs,
@@ -195,7 +192,6 @@ scene (clock,menuCursor) vars keystate
       return $ Main vrs{isCheat=ischeat,recordSaveState=(level,area)} gs
 
     keyToNumber :: Key -> Maybe Int
-    keyToNumber k = case k of
-      Char c -> if c>='0' && c<='9' then Just $ fromEnum c - fromEnum '0' else Nothing
-      _      -> Nothing
+    keyToNumber (Char c) | c>='0' && c<='9' = Just $ fromEnum c - fromEnum '0'
+    keyToNumber _ = Nothing
 
