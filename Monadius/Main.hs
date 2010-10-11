@@ -1,4 +1,5 @@
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ImplicitParams #-}
 {- Copyright 2005 Hideyuki Tanaka & Takayuki Muranushi
   This program is distributed under the terms of the GNU General Public License.
 
@@ -35,33 +36,33 @@ lookAt :: Vertex3 Double -> Vertex3 Double -> Vector3 Double -> IO ()
 lookAt v1 v2 v3 = GLU.lookAt (fmap r2f v1) (fmap r2f v2) (fmap r2f v3)
 
 
-sceneProc :: forall a a1. IORef a -> (a -> IO a1) -> (a1 -> IO Scene) -> IO Scene
-sceneProc ks proc next = readIORef ks >>= proc >>= return . Scene . next
+-- sceneProc :: forall a a1. IORef a -> (a -> IO a1) -> (a1 -> IO Scene) -> IO Scene
+sceneProc proc next = readIORef ?ks >>= proc >>= return . Scene . next
 
-endingProc :: IORef [Key] -> GlobalVariables -> Double -> IO Scene
-endingProc ks vars counter = do -- sceneProc ks proc next
-  ks' <- readIORef ks
+-- endingProc :: GlobalVariables -> Double -> IO Scene
+endingProc vars counter = do -- sceneProc ks proc next
+  ks' <- readIORef ?ks
   scene <- proc (toKeyF ks')
   return $ Scene $ next scene
   where
     proc = SE.scene (fst $ saveState vars) counter
-    next (SE.Next c') = endingProc ks vars c'
-    next SE.End       = openingProc ks vars (0,1)
+    next (SE.Next c') = endingProc vars c'
+    next SE.End       = openingProc vars (0,1)
 
-openingProc :: IORef [Key] -> GlobalVariables -> (Int,Int) -> IO Scene
-openingProc ks vars s = sceneProc ks proc next
+-- openingProc :: GlobalVariables -> (Int,Int) -> IO Scene
+openingProc vars s = sceneProc proc next
   where
     proc = SO.scene s vars
-    next (SO.Opening s' v') = openingProc ks v' s'
-    next (SO.Main v' gs) = mainProc ks v' gs
+    next (SO.Opening s' v') = openingProc v' s'
+    next (SO.Main v' gs) = mainProc v' gs
 
-mainProc :: IORef [Key] -> GlobalVariables -> IORef Recorder -> IO Scene
-mainProc ks vars gs = sceneProc ks proc next
+-- mainProc :: GlobalVariables -> IORef Recorder -> IO Scene
+mainProc  vars gs = sceneProc proc next
   where
     proc = SM.scene vars gs
-    next (SM.Opening v') = openingProc ks v' (0,1)
-    next (SM.Ending v')  = endingProc ks v' 0.0
-    next (SM.Main v' g') = mainProc ks v' g'
+    next (SM.Opening v') = openingProc v' (0,1)
+    next (SM.Ending v')  = endingProc v' 0.0
+    next (SM.Main v' g') = mainProc v' g'
 
 
 readRecordSettings args
@@ -86,9 +87,10 @@ main = do
   (recMode,keys,rss,repName) <- readRecordSettings args
 
   keystate <- newIORef []
-  cp <- newIORef (openingProc keystate GlobalVariables{saveState = (1,0) ,isCheat = False,
-                                              recorderMode=recMode,playbackKeys=keys,playbackSaveState = rss,recordSaveState=(1,0),demoIndex=0,
-                                              playBackName=repName,saveHiScore=0} (0,0))
+  let ?ks = keystate
+  cp <- newIORef (openingProc GlobalVariables{saveState = (1,0) ,isCheat = False,
+    recorderMode=recMode,playbackKeys=keys,playbackSaveState = rss,recordSaveState=(1,0),demoIndex=0,
+    playBackName=repName,saveHiScore=0} (0,0))
   initialWindowSize $= Size 640 480
   initialDisplayMode $= [RGBAMode,DoubleBuffered]
 
